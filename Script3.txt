@@ -1,0 +1,468 @@
+**********************************************
+
+ButtonMode
+ButtonCalen
+ButtonTachy
+ButtonSlide
+ButtonColor
+
+MaskButton
+
+ButtonSet
+ButtonStart
+ButtonReset
+
+IdxMin
+IdxHour
+IdxChrSec
+
+CenterSubSec
+CenterSec
+CenterMin
+CenterDate
+
+IdxChrMiliSec
+IdxSec
+IdxChrMin
+IdxDate
+
+IdxChrHour
+IdxDay
+
+DispBoxFrame
+DispBox
+フォントのアウトライン埋め込み
+0123456789ABCDEFGJLMNOPRSTUVY- 
+
+CalenBoxFrame
+CalenBox
+フォントのアウトライン埋め込み
+0123456789ABCDEFGHIJLMNOPRSTUVWY, 
+
+DialDays
+DialDate28
+DialDate29
+DialDate30
+DialDate31
+
+DialMin
+DialSec
+DialSubSec
+
+DialInner
+DialOuter
+
+DialTachy
+DialHours
+
+SlideRuleIn
+SlideRuleOut
+
+BlackPlate
+
+************* Script1 ***************************
+var chrono_array:Array = Array(
+	IdxChrMiliSec, IdxSec, IdxChrMin, IdxChrHour,
+	DialSec, DialSubSec, DialMin, CenterSec, CenterSubSec, CenterMin,
+	ButtonStart, ButtonReset, BlackPlate);
+
+var IsMovingChrono:Boolean = false;
+
+var DeltaTime:Date = new Date(2004,0,1,0,0,0);
+var BaseTime:Number = DeltaTime.getTime();
+var StartTime:Number;
+var ChronoTime:Number = 0;
+var CurrentChronoTime:Number;
+var PrevHour:Number = -1;
+var PrevIdxChrSecRot:Number;
+
+// Initial settings
+var save_share:SharedObject = SharedObject.getLocal("ClockSetting");
+setClockMode((save_share.data.IsChronoMode != undefined) ? save_share.data.IsChronoMode : true);
+setDispSlideRule((save_share.data.IsDispSlideRule != undefined) ? save_share.data.IsDispSlideRule : true);
+setDispTachyHours((save_share.data.IsDispTachyHours != undefined) ? save_share.data.IsDispTachyHours : true);
+setIsDispTachy((save_share.data.IsDispTachy != undefined) ? save_share.data.IsDispTachy : true);
+setIsDialInner((save_share.data.IsDialInner != undefined) ? save_share.data.IsDialInner : false);
+
+this.onEnterFrame = function()
+{
+	if(save_share.data.IsChronoMode)
+		updateTimeChrono();
+	else
+		updateTimeNormal();
+}
+function updateTimeNormal():Void
+{
+	var CurrentTime:Date = new Date();
+	var Millisecond:Number = CurrentTime.getMilliseconds();
+	var Second:Number = CurrentTime.getSeconds() + 0.001 * Millisecond;
+	var Minute:Number = CurrentTime.getMinutes() + Second / 60;
+	var Hour:Number = CurrentTime.getHours() + Minute / 60;
+
+	IdxChrSec._rotation = Second * 6;
+	IdxMin._rotation = Minute * 6;
+	IdxHour._rotation = Hour * 30;
+	
+	if(CurrentTime.getHours() != PrevHour){
+		PrevHour = CurrentTime.getHours();
+		updateCalender(CurrentTime, Hour);
+	}
+}
+function updateTimeChrono():Void
+{
+	var CurrentTime:Date = new Date();
+	var Millisecond:Number = CurrentTime.getMilliseconds();
+	var Second:Number = CurrentTime.getSeconds() + 0.001 * Millisecond;
+	var Minute:Number = CurrentTime.getMinutes() + Second / 60;
+	var Hour:Number = CurrentTime.getHours() + Minute / 60;
+
+	IdxSec._rotation = Second * 6;
+	IdxMin._rotation = Minute * 6;
+	IdxHour._rotation = Hour * 30;
+	
+	if(CurrentTime.getHours() != PrevHour){
+		PrevHour = CurrentTime.getHours();
+		updateCalender(CurrentTime, Hour);
+	}
+
+	if(IsMovingChrono){
+		CurrentChronoTime = ChronoTime + CurrentTime.getTime() - StartTime;
+		DeltaTime.setTime(CurrentChronoTime + BaseTime);
+		Millisecond = DeltaTime.getMilliseconds();
+		Second = DeltaTime.getSeconds() + 0.001 * Millisecond;
+		Minute = DeltaTime.getMinutes() + Second / 60;
+		Hour = DeltaTime.getHours() + Minute / 60;
+
+		IdxChrMiliSec._rotation = Millisecond * 0.36;
+		IdxChrSec._rotation = Second * 6;
+		IdxChrMin._rotation = Minute * 6;
+		IdxChrHour._rotation = Hour * 30;
+	}
+}
+function startChrono():Void
+{
+	IsMovingChrono = true;
+	var CurrentTime:Date = new Date();
+	StartTime = CurrentTime.getTime();
+}
+function stopChrono():Void
+{
+	IsMovingChrono = false;
+	ChronoTime = CurrentChronoTime;
+}
+function resetChrono():Void
+{
+	ChronoTime = 0;
+	CurrentChronoTime = 0;
+	
+	IdxChrMiliSec._rotation = 0;
+	IdxChrSec._rotation = 0;
+	IdxChrMin._rotation = 0;
+	IdxChrHour._rotation = 0;
+}
+function setClockMode(IsChrono:Boolean):Void
+{
+	ButtonMode._alpha = IsChrono ? 100 : 25;
+	save_share.data.IsChronoMode = IsChrono;
+
+	if(IsChrono){
+		IdxChrSec._rotation = PrevIdxChrSecRot;
+		for(i in chrono_array) chrono_array[i]._visible = true;
+	}else{
+		PrevIdxChrSecRot = IdxChrSec._rotation;
+		for(i in chrono_array) chrono_array[i]._visible = false;
+	}
+	if(!save_share.data.IsChronoMode && save_share.data.IsDispSlideRule && save_share.data.IsDispTachyHours)
+		setIsDispTachy(false);
+}
+function setDispSlideRule(IsDisplay:Boolean):Void
+{
+	ButtonSlide._alpha = IsDisplay ? 100 : 25;
+	save_share.data.IsDispSlideRule = IsDisplay;
+	if(save_share.data.IsDispTachy != undefined) setIsDispTachy(save_share.data.IsDispTachy);
+	if(IsDisplay){
+		SlideRuleIn._visible = true;
+		SlideRuleOut._visible = true;
+	}else{
+		SlideRuleIn._visible = false;
+		SlideRuleOut._visible = false;
+	}
+}
+function setDispTachyHours(IsDisplay:Boolean):Void
+{
+	ButtonTachy._alpha = IsDisplay ? 100 : 25;
+	save_share.data.IsDispTachyHours = IsDisplay;
+	if(save_share.data.IsDispTachy != undefined) setIsDispTachy(save_share.data.IsDispTachy);
+	if(IsDisplay){
+		DialInner._visible = true;
+		DialOuter._visible = false;
+	}else{
+		DialInner._visible = false;
+		DialOuter._visible = true;
+	}
+}
+function setIsDispTachy(IsTachy:Boolean):Boolean
+{
+	save_share.data.IsDispTachy = (!save_share.data.IsDispSlideRule) ? true : IsTachy;
+	if(!save_share.data.IsDispTachyHours){
+		DialTachy._visible = false;
+		DialHours._visible = false;
+		return false;
+	}
+	DialTachy._visible = save_share.data.IsDispTachy;
+	DialHours._visible = !save_share.data.IsDispTachy;
+	return (save_share.data.IsDispTachy == IsTachy);
+}
+function setIsDialInner(IsInner:Boolean):Boolean
+{
+	save_share.data.IsDialInner = save_share.data.IsDispTachyHours ? true : IsInner;	
+	DialInner._visible = save_share.data.IsDialInner;
+	DialOuter._visible = !save_share.data.IsDialInner;
+	return (save_share.data.IsDialInner == IsInner);
+}
+
+************* Script2 ***************************
+var monthName_array:Array = new Array("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC");
+var mDays_array:Array = new Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+var dayName_array:Array = new Array("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT");
+
+var calen1_array:Array = Array(IdxDate, IdxDay, DialDays, CenterDate);
+var calen2_array:Array = Array(DispBox, DispBoxFrame);
+var calen3_array:Array = Array(CalenBox, CalenBoxFrame);
+
+// Initial settings
+var save_share:SharedObject = SharedObject.getLocal("ClockSetting");
+setCalenMode((save_share.data.modeCalen != undefined) ? save_share.data.modeCalen : 1);
+
+function setCalenMode(mode:Number):Void
+{
+	for(i in calen1_array) calen1_array[i]._visible = false;
+	for(i in calen2_array) calen2_array[i]._visible = false;
+	for(i in calen3_array) calen3_array[i]._visible = false;
+	for(i = 28; i <= 31; i++) this["DialDate" + i]._visible = false;
+
+	ButtonCalen._alpha = (mode != 0) ? 100 : 25;
+
+	switch(mode){
+	case 0:
+		break;
+	case 1:
+		for(i in calen1_array) calen1_array[i]._visible = true;
+		for(i in calen2_array) calen2_array[i]._visible = true;
+		break;
+	case 2:
+		for(i in calen2_array) calen2_array[i]._visible = true;
+		break;
+	case 3:
+		for(i in calen3_array) calen3_array[i]._visible = true;		
+		break;
+	}
+	save_share.data.modeCalen = mode;
+	PrevHour = -1;
+}
+function updateCalender(CurrentTime:Date, Hour:Number):Void
+{
+	switch(save_share.data.modeCalen){
+	case 0:
+		break;
+	case 1:
+		updateCalender1(CurrentTime, Hour);
+		break;
+	case 2:
+		updateCalender2(CurrentTime);
+		break;
+	case 3:
+		updateCalender3(CurrentTime);
+		break;
+	}
+}
+function updateCalender1(CurrentTime:Date, Hour:Number):Void
+{
+	var year:Number = CurrentTime.getFullYear()
+
+	var mDays = mDays_array[CurrentTime.getMonth()];
+	if(mDays == 28 && (year%4 == 0 && year%100 != 0 || year%400 == 0)) mDays = 29;
+
+	for(i = 28; i <= 31; i++)
+		this["DialDate" + i]._visible = (i == mDays) ? true : false;
+	
+	IdxDate._rotation = (CurrentTime.getDate() - 1 + Hour / 24) * 360 / mDays;
+	IdxDay._rotation = CurrentTime.getDay() * 360 / 7;
+	DispBox.text = monthName_array[CurrentTime.getMonth()] + " " + year;
+}
+function updateCalender2(CurrentTime:Date):Void
+{
+	var date_text = String(CurrentTime.getDate());
+	if(date_text.length == 1) date_text = "0" + date_text;
+	DispBox.text = date_text + " - " + monthName_array[CurrentTime.getMonth()];
+}
+function updateCalender3(CurrentTime:Date):Void
+{
+	CalenBox.text = dayName_array[CurrentTime.getDay()] + ", "
+		+ monthName_array[CurrentTime.getMonth()] + ", "
+		+ CurrentTime.getDate() + ", "
+		+ CurrentTime.getFullYear();
+}
+
+************* Script3 ***************************
+var color_array:Array = new Array(0xFFFFFF, 0xFAF8E8, 0xF9F4DF, 0xFEE6F2, 0xFDD5E9, 0xF7F7F7, 
+	0xEDEDED, 0xFFFFF5, 0xFFFFD7, 0xF5FBFD, 0xD9F1F7, 0xFEEBE2, 0xEFEBF4, 0xF0F9ED);
+
+// Initial settings
+var save_share:SharedObject = SharedObject.getLocal("ClockSetting");
+setPlateColor((save_share.data.idxColor != undefined) ? save_share.data.idxColor : 2);
+
+function setPlateColor(color_idx:Number):Void
+{
+	if(ColorPlate != undefined){
+		var mc:MovieClip = this.getInstanceAtDepth(1);
+		ColorPlate.swapDepths(1);
+		if(mc != undefined) mc.swapDepths(1);
+		ColorPlate.removeMovieClip();
+	}
+
+	save_share.data.idxColor = color_idx;
+	if(color_idx == 0) return;
+
+	var depth:Number = SlideRuleIn.getDepth();
+	if(this.getInstanceAtDepth(depth - 1) != undefined) return;
+	var new_mc:MovieClip = this.createEmptyMovieClip("ColorPlate", depth - 1);
+	new_mc._x = SlideRuleIn._x;
+	new_mc._y = SlideRuleIn._y;
+
+	new_mc.lineStyle(undefined, 0x000000);
+	new_mc.beginFill(color_array[color_idx]);
+	drawCircle(new_mc, 0, 0, SlideRuleIn._width/2);
+	new_mc.endFill();
+}
+function drawCircle(mc:MovieClip, x:Number, y:Number, r:Number):Void {
+	with(mc){
+		moveTo(x+r, y);
+		curveTo(r+x, Math.tan(Math.PI/8)*r+y, Math.sin(Math.PI/4)*r+x, Math.sin(Math.PI/4)*r+y);
+		curveTo(Math.tan(Math.PI/8)*r+x, r+y, x, r+y);
+		curveTo(-Math.tan(Math.PI/8)*r+x, r+y, -Math.sin(Math.PI/4)*r+x, Math.sin(Math.PI/4)*r+y);
+		curveTo(-r+x, Math.tan(Math.PI/8)*r+y, -r+x, y);
+		curveTo(-r+x, -Math.tan(Math.PI/8)*r+y, -Math.sin(Math.PI/4)*r+x, -Math.sin(Math.PI/4)*r+y);
+		curveTo(-Math.tan(Math.PI/8)*r+x, -r+y, x, -r+y);
+		curveTo(Math.tan(Math.PI/8)*r+x, -r+y, Math.sin(Math.PI/4)*r+x, -Math.sin(Math.PI/4)*r+y);
+		curveTo(r+x, -Math.tan(Math.PI/8)*r+y, r+x, y);
+	}
+}
+
+************* Script4 ***************************
+var panel_array:Array = Array(ButtonMode, ButtonCalen, ButtonTachy,
+							  ButtonSlide, ButtonColor, MaskButton);
+
+dispSettingPanel(false);
+
+function dispSettingPanel(IsDisp:Boolean)
+{
+	if(IsDisp)
+		for(var i in panel_array) panel_array[i]._visible = true;
+	else
+		for(var i in panel_array) panel_array[i]._visible = false;
+}
+
+************* ButtonMode ***************************
+on (release) {
+	_root.setClockMode(!_root.save_share.data.IsChronoMode);
+}
+
+************* ButtonCalen ***************************
+on (press) {
+	setCalenMode((save_share.data.modeCalen + 1) % 4);
+}
+
+************* ButtonTachy ***************************
+// setDispTachyHours(false) -> _root.setIsDispTachy(false) -> _root.setIsDispTachy(true)
+on (release) {
+	if(_root.save_share.data.IsDispTachyHours){
+		if(_root.save_share.data.IsDispTachy){
+			_root.setDispTachyHours(false);
+		}else{
+			if(!_root.setIsDispTachy(true)) _root.setDispTachyHours(false);
+		}
+	}else{
+		_root.setDispTachyHours(true);
+		if(!_root.setIsDispTachy(false)) _root.setIsDispTachy(true);
+	}
+}
+
+************* ButtonSlide ***************************
+on (release) {
+	_root.setDispSlideRule(!_root.save_share.data.IsDispSlideRule);
+}
+
+************* ButtonColor ***************************
+on (press) {
+	_root.setPlateColor((_root.save_share.data.idxColor + 1) % _root.color_array.length);
+}
+
+************* ButtonStart ***************************
+on (press) {
+	if(_root.IsMovingChrono)
+		_root.stopChrono();
+	else
+		_root.startChrono();
+}
+
+************* ButtonReset ***************************
+on (press) {
+	if(!_root.IsMovingChrono) _root.resetChrono();
+}
+
+************* ButtonSet ***************************
+on (press) {
+	dispSettingPanel(!_root.MaskButton._visible);
+}
+
+************* IdxMin ***************************
+onClipEvent (keyDown) {
+	if(Key.getCode() != Key.SPACE) return;
+	if(_root.IsMovingChrono)
+		_root.stopChrono();
+	else
+		_root.startChrono();
+}
+onClipEvent (keyUp) {
+	switch(Key.getCode()){
+	case Key.ENTER:
+		_root.resetChrono();
+		break;
+	}
+}
+
+************* SlideRuleOut ***************************
+onClipEvent (load) {
+	var IsMousePressed:Boolean = true;
+	var Radius:Number = this._width / 2;
+	var CurrentRotation:Number = 0;
+	if(_root.save_share.data.SlideRuleRot != undefined){
+		CurrentRotation = _root.save_share.data.SlideRuleRot;
+		_rotation = _root.save_share.data.SlideRuleRot;
+	}
+}
+onClipEvent (mouseDown) {
+	var dx:Number = _root._xmouse - _x;
+	var dy:Number = _root._ymouse - _y;
+	var r:Number = Math.sqrt(dx * dx + dy * dy);
+	
+	if(r < _root.SlideRuleIn._width / 2) return;
+	if(r > Radius) return;
+
+	IsMousePressed = true;
+	var StartAngle:Number = Math.atan2(dy, dx) * 180 / Math.PI;
+}
+onClipEvent (mouseUp) {
+	IsMousePressed = false;
+	CurrentRotation = _rotation;
+	_root.save_share.data.SlideRuleRot = _rotation;
+}
+onClipEvent (mouseMove) {
+	if(IsMousePressed){
+		var dx:Number = _root._xmouse - _x;
+		var dy:Number = _root._ymouse - _y;
+		var EndAngle:Number = Math.atan2(dy, dx) * 180 / Math.PI;
+		_rotation = CurrentRotation + EndAngle - StartAngle;
+	}
+}
